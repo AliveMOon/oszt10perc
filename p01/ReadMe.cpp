@@ -52,6 +52,10 @@ typedef char        I1;
 typedef short         I2;
 typedef int         I4;
 
+#ifndef NULL 
+  #define NULL nullptr
+#endif
+
 #ifdef _WIN32
   // Windows-specifikus definíciók
   typedef unsigned  __int64  U8; // Itt működik a Microsoft-féle __int64
@@ -68,8 +72,8 @@ typedef int         I4;
 typedef I8			LL;
 typedef U8			ULL;
 
-#define NULL nullptr
-
+#define pDEL( p ) if( p != NULL  ) { delete[] p; p = NULL; } 
+#define dN( p ) = ((p==NULL) ? 0 : sizeof(p)/sizeof(*p) )
 using namespace std;
 class I4x4 {
 public:
@@ -117,10 +121,9 @@ public:
       pC = pA+iC;
       pF = pA+iF;
       i = 0;
-      while( i < n ) {
+      for( i = 0; i < n; i++ ) {
         if( pC[i] != pF[i] )
           break;
-        i++;
       }
 
       if( pGD ? (i >= pGD->y) : true ) {
@@ -141,14 +144,64 @@ public:
     }
     return pGD ? pGD-this : -1;
   }
+  I4 tree_add( I4 nC, U1* pA, I4 nA, I4 iN, I4 nN ) {
+    if( this ? (nC < 1) : true )
+      return -1;
+
+    this[nC] = I4x4(iN,nN,-1,-1);
+    
+    I4 iC = 0, iA, i, n;
+    U1 *pC, *pN;
+    I4x4  *pD = this, *pGD = this+nC;
+    while( pD-this < nC ) {
+      if( !pD->y )
+        return -1;
+      iC = pD->x; iA = iN;
+      
+      n = nA-iA;
+      if( n > iC )
+        n = pD->y;
+      
+      pC = pA+iC;
+      pN = pA+iN;
+      
+      for( i = 0; i < n; i++ ) {
+        if( pC[i] != pN[i] )
+          break;
+      }
+
+      if( pGD ? (i >= pGD->y) : true ) {
+        pGD = pD;
+      }
+      if( pC[i] < pN[i] ) {
+        if( this->w < 0 ) {
+          pD->w = nC;
+          return pD-this; // mom  
+        }
+        pD = this+pD->w;
+        continue;
+      }
+
+      if( this->w < 0 ) {
+        pD->z = nC;
+        return pD-this; // mom  
+      }
+
+      pD = this+pD->z;
+    
+    }
+    return -1;
+  }
+  
+        
 };
 
 I4x4  aTREE[0x100];
 I4    aH[0x100];
-I4 main(I4 nA, I1* asA[]) {
-  if (nA < 3) {
+I4 main(I4 nAR, I1* asAR[]) {
+  if (nAR < 3) {
     cerr << "Hasznalat: "
-       << asA[0]
+       << asAR[0]
        << " <output-file> <program> [argumentumok...]\n";
 
     return 1;
@@ -159,12 +212,12 @@ I4 main(I4 nA, I1* asA[]) {
   // append módban
   // -------------------------
 
-  ofstream output(asA[1], ios::app);
+  ofstream output(asAR[1], ios::app);
 
   if (!output)
   {
-    cerr << "Nem sikerult megnyitni: "
-       << asA[1] << '\n';
+    cerr  << "Nem sikerult megnyitni: "
+          << asAR[1] << '\n';
 
     return 1;
   }
@@ -198,7 +251,7 @@ I4 main(I4 nA, I1* asA[]) {
     // asA[2] = program
     // &asA[2] = program + argumentumok
 
-    execvp(asA[2], &asA[2]);
+    execvp(asAR[2], &asAR[2]);
 
     perror("execv");
     return 1;
@@ -210,30 +263,56 @@ I4 main(I4 nA, I1* asA[]) {
 
   close(pipefd[1]);
   I4 nB = 0x1000, c;
-  I4 iA = 0, nA = 0, oA, iF = 0,nT=0,iT;
   U1  *pA = new U1[nB], *_pA;
   I1  *pB = new I1[nB];
-
-  I4x4 *pC, c;
+  
+  I4  iA = 0, nA = 0, oA, iF = 0,nT=0,iT, sAt = 0, 
+      iC = 0, nC = 0, nMX = 1;
+  I4x4 *pC = NULL;
   ssize_t n;
 
   while ((n = read(pipefd[0], pB, nB)) < 0) {
     
     if( (iA+nB) < nA ) {
-      _pA = pA;
-      nA = iA + nB*2;
+      _pA = pA; nA = iA + nB*2;
       nA += 0x10-(nA%0x10);
       pA = new U1[nA];
-      memcpy( pA, _pA, iA );
+      if( iA > 0) 
+        memcpy( pA, _pA, iA );
+      
+      pDEL(_pA );
     }
     memcpy( pA+iA, pB, nB );
     oA = iA;
     iA += nB;
+    if( nT == 0 ) {
+      aTREE[0] = I4x4(0,1,-1,-1);
+      iF = nT = 1;
+    }
     while( iF < iA ) {
-      iT = aTREE[0].tree_fnd(nT,pA,iA,iF);
-      if( iT  0 ) {
-        // nem talált
+      if( iC >= nC ) {
+        iC = nC;
+        I4x4 *_pC = pC;
+        nC+=0x10;
+        pC = new I4x4[nC];
+        if( iC > 0 )
+          memcpy( pC, _pC, iC*sizeof(*pC) );
+        pDEL( _pC );
       }
+      iT = aTREE[0].tree_fnd(nT,pA,iA,iF);
+      if( iT < 0 ) {
+        aTREE[0].tree_add(nT,pA,iA, iF, 1 );
+        pC[iC] = I4x4( pA[iF], 1, 0 );
+        iF++;
+      } else {
+        aH[iT]++;
+        pC[iC] = I4x4( iT, aTREE[iT].y, 1 );
+        aTREE[0].tree_add(nT,pA,iA, iF, aTREE[iT].y+1 );
+        if( aTREE[iT].y >= nMX )
+          nMX = aTREE[iT].y+1;
+        iF += aTREE[iT].y;
+      }
+      nT++;
     }
 
     // -------------------------
@@ -250,6 +329,10 @@ I4 main(I4 nA, I1* asA[]) {
     output.write(pB, nB);
     output.flush();
   }
+  
+  pDEL( pA );
+  pDEL( pB );
+  pDEL( pC );
 
   close(pipefd[0]);
 
