@@ -75,6 +75,23 @@ typedef U8			ULL;
 #define pDEL( p ) if( p != NULL  ) { delete[] p; p = NULL; } 
 #define dN( p ) = ((p==NULL) ? 0 : sizeof(p)/sizeof(*p) )
 using namespace std;
+
+const I1*  asCHAR[] = {
+                                cWHI,
+                                cBLC,
+                                cRED,
+                                cZOL,
+                                cYEL,
+                                cBLU,
+                                cMAG,
+                                cCIA,
+                              }; 
+const I1* sCLR( I4 c ) {
+  if( c > 0 )
+    c = -c;
+  return asCHAR[c%8];
+}
+
 class I4x4 {
 public:
   I4 x,y,z,w;
@@ -103,102 +120,86 @@ public:
     }
     throw std::out_of_range("I4x4 index out of bounds!");
   }
-  I4 tree_fnd( I4 nC, U1* pA, I4 nA, I4 iF ) {
-    if( this ? (nC < 1) : true )
-      return -1;
-    I4x4  *pD = this, *pGD = NULL;
-    I4 iC = 0, iA, i, n;
-    U1 *pC, *pF;
-    while( pD-this < nC ) {
-      if( !pD->y )
-        return -1;
-      iC = pD->x; iA = iF;
-      
-      n = nA-iA;
-      if( n > iC )
-        n = pD->y;
-      
-      pC = pA+iC;
-      pF = pA+iF;
-      i = 0;
-      for( i = 0; i < n; i++ ) {
-        if( pC[i] != pF[i] )
-          break;
-      }
 
-      if( pGD ? (i >= pGD->y) : true ) {
-        pGD = pD;
-      }
-      if( pC[i] < pF[i] ) {
-        if( this->w < 0 )
-          return pGD ? pGD-this : -1; 
-        pD = this+pD->w;
-        continue;
-      }
-
-      if( this->z < 0 )
-        return pGD ? pGD-this : -1;
-      
-      pD = this+pD->z;
-    
-    }
-    return pGD ? pGD-this : -1;
-  }
-  I4 tree_add( I4 nC, U1* pA, I4 nA, I4 iN, I4 nN ) {
-    if( this ? (nC < 1) : true )
-      return -1;
-
-    this[nC] = I4x4(iN,nN,-1,-1);
-    
-    I4 iC = 0, iA, i, n;
-    U1 *pC, *pN;
-    I4x4  *pD = this, *pGD = this+nC;
-    while( pD-this < nC ) {
-      if( !pD->y )
-        return -1;
-      iC = pD->x; iA = iN;
-      
-      n = nA-iA;
-      if( n > iC )
-        n = pD->y;
-      
-      pC = pA+iC;
-      pN = pA+iN;
-      
-      for( i = 0; i < n; i++ ) {
-        if( pC[i] != pN[i] )
-          break;
-      }
-
-      if( pGD ? (i >= pGD->y) : true ) {
-        pGD = pD;
-      }
-      if( pC[i] < pN[i] ) {
-        if( this->w < 0 ) {
-          pD->w = nC;
-          return pD-this; // mom  
-        }
-        pD = this+pD->w;
-        continue;
-      }
-
-      if( this->w < 0 ) {
-        pD->z = nC;
-        return pD-this; // mom  
-      }
-
-      pD = this+pD->z;
-    
-    }
-    return -1;
-  }
   
-        
+  I4 tree_add( U1* pS, I4& iC, I4x4& W ) {
+    iC = 0;
+    I4	nT = &W-this;
+    if( !nT )
+      return 1;
+    
+		I4	id = 0, e, i;
+    U1  *p_s = pS+W.x, *p_d; 
+        //mx = 0, o = 0;
+    
+		I4x4* p_w = this;
+		while( id < nT ) {
+			p_d = pS + p_w[id].x;
+			e = p_w[id].y;
+			if( e > W.y )
+				e = W.y;
+
+			for( i = 0; i < e; i++ ) {
+				if( p_s[i] != p_d[i] )
+				  break;
+			}
+			if( e == i )
+			if( W.y == p_w[id].y )
+				return nT; // megtalálta ez a code 
+
+			if( i >= p_w[id].y ) {
+				// ez nagyobb
+				if( !p_w[id].z ) {
+					iC = id;
+					p_w[id].z = nT;
+					return nT+1; // bekebelezte
+				}
+
+				id = p_w[id].z;
+				continue;
+			}
+			else if( i == W.y ) {
+				// feltolja ezt a sz�t mert W.n az elej�n van
+				W.z = id;
+				
+				if( p_w[iC].z == id )
+					p_w[iC].z = nT;
+				else 
+					p_w[iC].w = nT;
+
+				return nT+1; // bekebelezte
+			}
+
+			if( p_d[i] < p_s[i] ) {
+				if( !p_w[id].w ) {
+					iC = id;
+					p_w[id].w = nT;
+					return nT+1; // bekebelezte
+				}
+
+				iC = id;
+				id = p_w[id].w;
+				continue;
+			} 
+
+			if( p_d[i] > p_s[i] )
+			if( !p_w[id].z ) {
+				iC = id;
+				p_w[id].z = nT;
+				return nT+1; // bekebelezte
+			}
+
+			iC = id;
+			id = p_w[id].z;
+		}
+
+		return nT;
+	}
+  
 };
 
-I4x4  aTREE[0x100];
-I4    aH[0x100];
 I4 main(I4 nAR, I1* asAR[]) {
+
   if (nAR < 3) {
     cerr << "Hasznalat: "
        << asAR[0]
@@ -210,12 +211,10 @@ I4 main(I4 nAR, I1* asAR[]) {
   // -------------------------
   // Output fájl megnyitása
   // append módban
+  ofstream output(asAR[1], ios::app);
   // -------------------------
 
-  ofstream output(asAR[1], ios::app);
-
-  if (!output)
-  {
+  if (!output) {
     cerr  << "Nem sikerult megnyitni: "
           << asAR[1] << '\n';
 
@@ -251,7 +250,7 @@ I4 main(I4 nAR, I1* asAR[]) {
     // asA[2] = program
     // &asA[2] = program + argumentumok
 
-    execvp(asAR[2], &asAR[2]);
+    execvp( asAR[2], &asAR[2] );
 
     perror("execv");
     return 1;
@@ -260,59 +259,59 @@ I4 main(I4 nAR, I1* asAR[]) {
   // =========================
   // SZÜLŐ
   // =========================
-
   close(pipefd[1]);
-  I4 nB = 0x1000, c;
-  U1  *pA = new U1[nB], *_pA;
-  I1  *pB = new I1[nB];
   
-  I4  iA = 0, nA = 0, oA, iF = 0,nT=0,iT, sAt = 0, 
-      iC = 0, nC = 0, nMX = 1;
-  I4x4 *pC = NULL;
+  I4x4  aTR[0x100], // array tree
+        aCD[0x100], // array code
+        W;  
+  I4    aH[0x100],
+        nB = 0x1000, //c,
+        lA = 0, nA = 0, oA, 
+        iS = 0, nS, nT=0,   
+        iT,     sAt = 0, 
+        iCD = 0, nC = 0, nMX = 1;
+        
+  U1    *pA = new U1[nB], *_pA;
+  I1    *pB = new I1[nB];
+  
   ssize_t n;
 
-  while ((n = read(pipefd[0], pB, nB)) < 0) {
-    
-    if( (iA+nB) < nA ) {
-      _pA = pA; nA = iA + nB*2;
+  while ((n = read(pipefd[0], pB, nB)) > 0) {
+    if( (lA+nB) < nA ) {
+      _pA = pA; nA = lA + nB*2;
       nA += 0x10-(nA%0x10);
       pA = new U1[nA];
-      if( iA > 0) 
-        memcpy( pA, _pA, iA );
+      if( lA > 0) 
+        memcpy( pA, _pA, lA );
       
       pDEL(_pA );
     }
-    memcpy( pA+iA, pB, nB );
-    oA = iA;
-    iA += nB;
-    if( nT == 0 ) {
-      aTREE[0] = I4x4(0,1,-1,-1);
-      iF = nT = 1;
-    }
-    while( iF < iA ) {
-      if( iC >= nC ) {
-        iC = nC;
-        I4x4 *_pC = pC;
-        nC+=0x10;
-        pC = new I4x4[nC];
-        if( iC > 0 )
-          memcpy( pC, _pC, iC*sizeof(*pC) );
-        pDEL( _pC );
+    memcpy( pA+lA, pB, nB );
+    oA = lA;
+    lA += nB;
+
+    while( iS < lA ) {
+      if( iCD >= 0x100 ) {
+        nT = iCD = 0;
       }
-      iT = aTREE[0].tree_fnd(nT,pA,iA,iF);
-      if( iT < 0 ) {
-        aTREE[0].tree_add(nT,pA,iA, iF, 1 );
-        pC[iC] = I4x4( pA[iF], 1, 0 );
-        iF++;
-      } else {
-        aH[iT]++;
-        pC[iC] = I4x4( iT, aTREE[iT].y, 1 );
-        aTREE[0].tree_add(nT,pA,iA, iF, aTREE[iT].y+1 );
-        if( aTREE[iT].y >= nMX )
-          nMX = aTREE[iT].y+1;
-        iF += aTREE[iT].y;
-      }
-      nT++;
+
+      nT = aTR[0].tree_add( pA, aCD[iCD].x, aTR[nT] );
+      aH[aCD[iCD].x]++;
+      nS = aCD[iCD].y = aTR[aCD[iCD].x].y;
+
+      // -------------------------
+      // Tree -> Konzolra
+      // -------------------------
+      W = aTR[aCD[iCD].x];
+      cout <<  sCLR(aCD[iCD].x) << aCD[iCD].x << " "; 
+      cout.write( (I1*)(pA+W.x), W.y);
+
+      iCD++;
+      aTR[nT] = I4x4( iS, 
+                      ((iS+nS < lA) ? nS+1 
+                                    : lA-iS) 
+                    );
+      iS += nS;
     }
 
     // -------------------------
@@ -332,8 +331,7 @@ I4 main(I4 nAR, I1* asAR[]) {
   
   pDEL( pA );
   pDEL( pB );
-  pDEL( pC );
-
+  
   close(pipefd[0]);
 
   waitpid(pid, nullptr, 0);
