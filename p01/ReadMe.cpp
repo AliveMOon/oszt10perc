@@ -122,11 +122,13 @@ public:
   }
 
   
-  I4 tree_add( U1* pS, I4& iC, I4x4& W ) {
+  I4 nT_add( U1* pS, I4& iC, I4x4& W ) {
     iC = 0;
     I4	nT = &W-this;
-    if( !nT )
+    if( !nT ){
+      W = I4x4(W.x,1,0,0);
       return 1;
+    }
     
 		I4	id = 0, e, i;
     U1  *p_s = pS+W.x, *p_d; 
@@ -275,7 +277,7 @@ I4 main(I4 nAR, I1* asAR[]) {
   I1    *pB = new I1[nB];
   
   ssize_t n;
-
+  aTR[0] = aCD[0] = I4x4();
   while ((n = read(pipefd[0], pB, nB)) > 0) {
     if( (lA+nB) < nA ) {
       _pA = pA; nA = lA + nB*2;
@@ -289,13 +291,15 @@ I4 main(I4 nAR, I1* asAR[]) {
     memcpy( pA+lA, pB, nB );
     oA = lA;
     lA += nB;
+  
 
     while( iS < lA ) {
-      if( iCD >= 0x100 ) {
+      if( iS < 1 || iCD >= 0x100 ) {
         nT = iCD = 0;
+        aTR[nT] = I4x4(iS,1);
       }
 
-      nT = aTR[0].tree_add( pA, aCD[iCD].x, aTR[nT] );
+      nT = aTR[0].nT_add( pA, aCD[iCD].x, aTR[nT] );
       aH[aCD[iCD].x]++;
       nS = aCD[iCD].y = aTR[aCD[iCD].x].y;
 
@@ -303,7 +307,7 @@ I4 main(I4 nAR, I1* asAR[]) {
       // Tree -> Konzolra
       // -------------------------
       W = aTR[aCD[iCD].x];
-      cout <<  sCLR(aCD[iCD].x) << aCD[iCD].x << " "; 
+      cout << sCLR(aCD[iCD].x) << aCD[iCD].x << " "; 
       cout.write( (I1*)(pA+W.x), W.y);
 
       iCD++;
