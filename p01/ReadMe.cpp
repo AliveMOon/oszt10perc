@@ -77,19 +77,19 @@ typedef U8			ULL;
 using namespace std;
 
 const I1*  asCHAR[] = {
-                                cWHI,
-                                cBLC,
-                                cRED,
-                                cZOL,
-                                cYEL,
-                                cBLU,
-                                cMAG,
-                                cCIA,
-                              }; 
+                        cBLC,
+                        cWHI,
+                        cRED,
+                        cZOL,
+                        cYEL,
+                        cBLU,
+                        cMAG,
+                        cCIA,
+                      }; 
 const I1* sCLR( I4 c ) {
-  if( c > 0 )
+  if( c < 0 )
     c = -c;
-  return asCHAR[c%8];
+  return asCHAR[1+(c%7)];
 }
 
 class I4x4 {
@@ -122,8 +122,8 @@ public:
   }
 
   
-  I4 nT_add( U1* pS, I4& iC, I4x4& W ) {
-    iC = 0;
+  I4 nT_add( U1* pS, I4& iMOM, I4x4& W ) {
+    iMOM = 0;
     I4	nT = &W-this;
     if( !nT ){
       W = I4x4(W.x,1,0,0);
@@ -146,13 +146,15 @@ public:
 				  break;
 			}
 			if( e == i )
-			if( W.y == p_w[id].y )
+			if( W.y == p_w[id].y ){
+        iMOM=id;
 				return nT; // megtalálta ez a code 
+      }
 
 			if( i >= p_w[id].y ) {
 				// ez nagyobb
 				if( !p_w[id].z ) {
-					iC = id;
+					iMOM = id;
 					p_w[id].z = nT;
 					return nT+1; // bekebelezte
 				}
@@ -161,37 +163,37 @@ public:
 				continue;
 			}
 			else if( i == W.y ) {
-				// feltolja ezt a sz�t mert W.n az elej�n van
+				// feltolja ezt a szót mert W.n az elején van
 				W.z = id;
 				
-				if( p_w[iC].z == id )
-					p_w[iC].z = nT;
+				if( p_w[iMOM].z == id )
+					p_w[iMOM].z = nT;
 				else 
-					p_w[iC].w = nT;
+					p_w[iMOM].w = nT;
 
 				return nT+1; // bekebelezte
 			}
 
 			if( p_d[i] < p_s[i] ) {
 				if( !p_w[id].w ) {
-					iC = id;
+					iMOM = id;
 					p_w[id].w = nT;
 					return nT+1; // bekebelezte
 				}
 
-				iC = id;
+				iMOM = id;
 				id = p_w[id].w;
 				continue;
 			} 
 
 			if( p_d[i] > p_s[i] )
 			if( !p_w[id].z ) {
-				iC = id;
+				iMOM = id;
 				p_w[id].z = nT;
 				return nT+1; // bekebelezte
 			}
 
-			iC = id;
+			iMOM = id;
 			id = p_w[id].z;
 		}
 
@@ -269,9 +271,9 @@ I4 main(I4 nAR, I1* asAR[]) {
   I4    aH[0x100],
         nB = 0x1000, //c,
         lA = 0, nA = 0, oA, 
-        iS = 0, nS, nT=0,   
+        iS = 0, lnM, nT=0,   
         iT,     sAt = 0, 
-        iCD = 0, nC = 0, nMX = 1;
+        iCD = 0, iMOM = 0, nMX = 1;
         
   U1    *pA = new U1[nB], *_pA;
   I1    *pB = new I1[nB];
@@ -299,23 +301,27 @@ I4 main(I4 nAR, I1* asAR[]) {
         aTR[nT] = I4x4(iS,1);
       }
 
-      nT = aTR[0].nT_add( pA, aCD[iCD].x, aTR[nT] );
-      aH[aCD[iCD].x]++;
-      nS = aCD[iCD].y = aTR[aCD[iCD].x].y;
+      nT = aTR[0].nT_add( pA, iMOM, aTR[nT] );
+      aH[aCD[iCD].x=iMOM]++;
+      lnM = aCD[iCD].y = aTR[iMOM].y;
 
       // -------------------------
       // Tree -> Konzolra
       // -------------------------
-      W = aTR[aCD[iCD].x];
-      cout << sCLR(aCD[iCD].x) << aCD[iCD].x << " "; 
+      W = aTR[iMOM];
+      cout << "\r\n" << sCLR(iMOM) << iMOM << " \"";
+      cout.flush(); 
       cout.write( (I1*)(pA+W.x), W.y);
+      cout.flush();
+      cout << "\"";
+      cout.flush();
 
       iCD++;
       aTR[nT] = I4x4( iS, 
-                      ((iS+nS < lA) ? nS+1 
-                                    : lA-iS) 
+                      ((iS+lnM < lA) ? lnM+1 
+                                      : lA-iS) 
                     );
-      iS += nS;
+      iS += lnM;
     }
 
     // -------------------------
