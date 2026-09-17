@@ -92,7 +92,7 @@ const I1* sCLR( I4 c ) {
   return asCHAR[1+(c%7)];
 }
 
-size_t memcmp_i( const U1 *p_a, const U1 *p_b, size_t n ) {
+size_t memcmp_i( const I1 *p_a, const I1 *p_b, size_t n ) {
   for( size_t i = 0; i < n; i++ )
     if( p_a[i] != p_b[i] )
       return i;
@@ -129,12 +129,12 @@ public:
   }
 
   
-  I4 nT_add( U1* pS, I4& iM, I4x4& T ) {
+  I4 nT_add( I1* pS, I4& iM, I4x4& T ) {
     iM = 0;
     I4	nT = &T-this;
     size_t i, e;
     
-    U1  *p_t = pS+T.x, *p_m; 
+    I1  *p_t = pS+T.x, *p_m; 
     
 		I4x4* p_w = this;
 		while( iM < nT ) {
@@ -177,6 +177,7 @@ public:
 					
           // bekebelezte
           T.y = p_w[iM].y+1;
+          iM = -1-iM;
           return nT+1; 
 				}
 
@@ -190,6 +191,7 @@ public:
 				
         // bekebelezte
         T.y = p_w[iM].y+1;
+        iM = -1-iM;
         return nT+1; 
 			}
 
@@ -198,6 +200,8 @@ public:
 
 		return nT;
 	}
+
+
   
 };
 const char sDMP[] =
@@ -277,31 +281,34 @@ I4 main(I4 nAR, I1* asAR[]) {
         code;  
   I4    aH[0x100],
         nB = 0x1000, //c,
-        lS = 0, nS = 0, 
-        oA, 
+        sS, 
+        lS = 0, nS = nB*2, 
         iS = 0, lnM, 
         nT=0, nTa,   
         iT,     sAt = 0, 
         iC = 0, iM = 0, nMX = 1;
         
-  U1    *pS = new U1[nB], *_pA;
+  I1    *pS = new I1[nS], *_pA;
   I1    *pB = new I1[nB];
   
   ssize_t n;
   aTR[0] = aCD[0] = I4x4();
   while ((n = read(pipefd[0], pB, nB)) > 0) {
-    if( (lS+nB) < nS ) {
-      _pA = pS; nS = lS + nB*2;
+    
+    if( (lS+n) < nS ) {
+      _pA = pS; 
+      
+      nS = lS + n*2;
       nS += 0x10-(nS%0x10);
-      pS = new U1[nS];
+      pS = new I1[nS];
       if( lS > 0) 
         memcpy( pS, _pA, lS );
       
       pDEL(_pA );
     }
-    memcpy( pS+lS, pB, nB );
-    oA = lS;
-    lS += nB;
+    
+    memcpy( pS+lS, pB, n );
+    sS = lS; lS += n;
   
 
     while( iS < lS ) {
@@ -314,6 +321,7 @@ I4 main(I4 nAR, I1* asAR[]) {
                  //    char,  mom, i, n   
         aCD[0] = I4x4( pS[iS], -1, 0, 0 );
         nT=1; iC=1;
+        iS++;
       }
       aTR[nT] = I4x4(iS,lS-iS);
       nTa = nT;
@@ -326,42 +334,46 @@ I4 main(I4 nAR, I1* asAR[]) {
       // -------------------------
       // Tree -> Konzolra
       // -------------------------
-      cout << "\r\n" << sCLR(code.y) << iC  << "\t" << code.x 
-                                            << " "  << code.y 
-                                            << " "  << code.z 
-                                            << " "  << code.w 
-                                            << " \"";
+      cout  << "\r\n" << sCLR(code.y) << iC
+      << "\t0x" << uppercase << setw(2) << setfill('0')<< hex << code.x; 
+      cout  << dec
+            << " "    << code.y 
+            << " "    << code.z 
+            << " "    << code.w; 
       cout.flush();
       
-      for( I4 i = 0; i < code.w; i++ ) {
-        aDMP[i] = sDMP[pS[code.z+i]];
+      
+      if( iM >= 0 ) {
+        for( I4 i = 0; i < code.w; i++ ) {
+          aDMP[i] = sDMP[pS[code.z+i]];
+        }
+        
+        cout  << " \"";
+        cout.write( aDMP, code.w );
+        cout << "\"";
+        cout.flush();
+      } else {
+        cout  << " '";
+        cout.write( sDMP+(code.x&0xff), 1 );
+        cout  << "'";
+        cout.flush();
       }
 
-      cout.write( aDMP, code.w );
-            
-      cout.flush();
-      cout << "\" ";
-        
-      cout.write( sDMP+(code.x&0xff), 1 );
-      
-      cout.flush();
-
       iC++;  
-      
     }
 
     // -------------------------
     // 1. Konzolra
     // -------------------------
 
-    cout.write(pB, nB);
+    cout.write(pS+sS, lS-sS);
     cout.flush();
 
     // -------------------------
     // 2. Fájlba append
     // -------------------------
 
-    output.write(pB, nB);
+    output.write( pS+sS, lS-sS);
     output.flush();
   }
   
