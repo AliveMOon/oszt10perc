@@ -92,6 +92,13 @@ const I1* sCLR( I4 c ) {
   return asCHAR[1+(c%7)];
 }
 
+size_t memcmp_i( const U1 *p_a, const U1 *p_b, size_t n ) {
+  for( size_t i = 0; i < n; i++ )
+    if( p_a[i] != p_b[i] )
+      return i;
+  return 0;
+}
+
 class I4x4 {
 public:
   I4 x,y,z,w;
@@ -122,86 +129,86 @@ public:
   }
 
   
-  I4 nT_add( U1* pS, I4& iMOM, I4x4& W ) {
-    iMOM = 0;
-    I4	nT = &W-this;
-    if( !nT ){
-      W = I4x4(W.x,1,0,0);
-      return 1;
-    }
+  I4 nT_add( U1* pS, I4& iM, I4x4& T ) {
+    iM = 0;
+    I4	nT = &T-this;
+    size_t i, e;
     
-		I4	id = 0, e, i;
-    U1  *p_s = pS+W.x, *p_d; 
-        //mx = 0, o = 0;
+    U1  *p_t = pS+T.x, *p_m; 
     
 		I4x4* p_w = this;
-		while( id < nT ) {
-			p_d = pS + p_w[id].x;
-			e = p_w[id].y;
-			if( e > W.y )
-				e = W.y;
-
-			for( i = 0; i < e; i++ ) {
-				if( p_s[i] != p_d[i] )
-				  break;
-			}
+		while( iM < nT ) {
+			p_m = pS + p_w[iM].x;
+			e = (T.y > p_w[iM].y) ? p_w[iM].y : T.y; 
+			
+      i = memcmp_i( p_m, p_t, e);
 			if( e == i )
-			if( W.y == p_w[id].y ){
-        iMOM=id;
-				return nT; // megtalálta ez a code 
-      }
-
-			if( i >= p_w[id].y ) {
-				// ez nagyobb
-				if( !p_w[id].z ) {
-					iMOM = id;
-					p_w[id].z = nT;
-					return nT+1; // bekebelezte
+      if( T.y == p_w[iM].y ) 
+        return nT; // Vége!
+      
+			if( i == p_w[iM].y ) {
+				// a T itt már hosszabb
+        if( !p_w[iM].z ) {
+          p_w[iM].z = nT;
+          
+          T.y = p_w[iM].y+1;
+          return nT+1; // bekebelezte 
 				}
 
-				id = p_w[id].z;
+				iM = p_w[iM].z;
 				continue;
 			}
-			else if( i == W.y ) {
-				// feltolja ezt a szót mert W.n az elején van
-				W.z = id;
+			/*else if( i == T.y ) {
+				// feltolja ezt a szót mert T.n az elején van
+				T.z = iM;
 				
-				if( p_w[iMOM].z == id )
-					p_w[iMOM].z = nT;
+				if( p_w[iM].z == id )
+					p_w[iM].z = nT;
 				else 
-					p_w[iMOM].w = nT;
-
-				return nT+1; // bekebelezte
-			}
-
-			if( p_d[i] < p_s[i] ) {
-				if( !p_w[id].w ) {
-					iMOM = id;
-					p_w[id].w = nT;
-					return nT+1; // bekebelezte
+					p_w[iM].w = nT;
+        
+        return nT+1; // bekebelezte
+			}*/
+      
+      // rövidebb az azonosság mint a iM
+			if( p_m[i] < p_t[i] ) {
+        if( !p_w[iM].w ) {
+          p_w[iM].w = nT;
+					
+          // bekebelezte
+          T.y = p_w[iM].y+1;
+          return nT+1; 
 				}
 
-				iMOM = id;
-				id = p_w[id].w;
+				iM = p_w[iM].w;
 				continue;
 			} 
 
-			if( p_d[i] > p_s[i] )
-			if( !p_w[id].z ) {
-				iMOM = id;
-				p_w[id].z = nT;
-				return nT+1; // bekebelezte
+      if( p_m[i] >= p_t[i] )
+			if( !p_w[iM].z ) {
+        p_w[iM].z = nT;
+				
+        // bekebelezte
+        T.y = p_w[iM].y+1;
+        return nT+1; 
 			}
 
-			iMOM = id;
-			id = p_w[id].z;
+			iM = p_w[iM].z;
 		}
 
 		return nT;
 	}
   
 };
-
+const char sDMP[] =
+    "................................"
+    " !\"#$%&'()*+,-./0123456789:;<=>?"
+    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+    "`abcdefghijklmnopqrstuvwxyz{|}~"
+    "..............................."
+    "..............................."
+    "..............................."
+    "...............................";
 I4 main(I4 nAR, I1* asAR[]) {
 
   if (nAR < 3) {
@@ -264,64 +271,83 @@ I4 main(I4 nAR, I1* asAR[]) {
   // SZÜLŐ
   // =========================
   close(pipefd[1]);
-  
+  I1 aDMP[0x100];
   I4x4  aTR[0x100], // array tree
         aCD[0x100], // array code
-        W;  
+        code;  
   I4    aH[0x100],
         nB = 0x1000, //c,
-        lA = 0, nA = 0, oA, 
-        iS = 0, lnM, nT=0,   
+        lS = 0, nS = 0, 
+        oA, 
+        iS = 0, lnM, 
+        nT=0, nTa,   
         iT,     sAt = 0, 
-        iCD = 0, iMOM = 0, nMX = 1;
+        iC = 0, iM = 0, nMX = 1;
         
-  U1    *pA = new U1[nB], *_pA;
+  U1    *pS = new U1[nB], *_pA;
   I1    *pB = new I1[nB];
   
   ssize_t n;
   aTR[0] = aCD[0] = I4x4();
   while ((n = read(pipefd[0], pB, nB)) > 0) {
-    if( (lA+nB) < nA ) {
-      _pA = pA; nA = lA + nB*2;
-      nA += 0x10-(nA%0x10);
-      pA = new U1[nA];
-      if( lA > 0) 
-        memcpy( pA, _pA, lA );
+    if( (lS+nB) < nS ) {
+      _pA = pS; nS = lS + nB*2;
+      nS += 0x10-(nS%0x10);
+      pS = new U1[nS];
+      if( lS > 0) 
+        memcpy( pS, _pA, lS );
       
       pDEL(_pA );
     }
-    memcpy( pA+lA, pB, nB );
-    oA = lA;
-    lA += nB;
+    memcpy( pS+lS, pB, nB );
+    oA = lS;
+    lS += nB;
   
 
-    while( iS < lA ) {
-      if( iS < 1 || iCD >= 0x100 ) {
-        nT = iCD = 0;
-        aTR[nT] = I4x4(iS,1);
+    while( iS < lS ) {
+      if( iS < 1 || iC >= 0x100 ) {
+        memset( aH, 0, 0x100*sizeof(*aH) );
+        aH[0] = 1;
+        nT = iC = 0;
+        
+        aTR[0] = I4x4(iS,1);
+                 //    char,  mom, i, n   
+        aCD[0] = I4x4( pS[iS], -1, 0, 0 );
+        nT=1; iC=1;
       }
-
-      nT = aTR[0].nT_add( pA, iMOM, aTR[nT] );
-      aH[aCD[iCD].x=iMOM]++;
-      lnM = aCD[iCD].y = aTR[iMOM].y;
+      aTR[nT] = I4x4(iS,lS-iS);
+      nTa = nT;
+      nT = aTR[0].nT_add( pS, iM, aTR[nT] );
+      aH[iM]++;
+      iS += aTR[iM].y;
+      code = aCD[iC] = I4x4(pS[iS], iM, aTR[iM].x, aTR[iM].y );
+      iS++;
 
       // -------------------------
       // Tree -> Konzolra
       // -------------------------
-      W = aTR[iMOM];
-      cout << "\r\n" << sCLR(iMOM) << iMOM << " \"";
-      cout.flush(); 
-      cout.write( (I1*)(pA+W.x), W.y);
+      cout << "\r\n" << sCLR(code.y) << iC  << "\t" << code.x 
+                                            << " "  << code.y 
+                                            << " "  << code.z 
+                                            << " "  << code.w 
+                                            << " \"";
       cout.flush();
-      cout << "\"";
+      
+      for( I4 i = 0; i < code.w; i++ ) {
+        aDMP[i] = sDMP[pS[code.z+i]];
+      }
+
+      cout.write( aDMP, code.w );
+            
+      cout.flush();
+      cout << "\" ";
+        
+      cout.write( sDMP+(code.x&0xff), 1 );
+      
       cout.flush();
 
-      iCD++;
-      aTR[nT] = I4x4( iS, 
-                      ((iS+lnM < lA) ? lnM+1 
-                                      : lA-iS) 
-                    );
-      iS += lnM;
+      iC++;  
+      
     }
 
     // -------------------------
@@ -339,7 +365,7 @@ I4 main(I4 nAR, I1* asAR[]) {
     output.flush();
   }
   
-  pDEL( pA );
+  pDEL( pS );
   pDEL( pB );
   
   close(pipefd[0]);
