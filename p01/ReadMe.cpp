@@ -68,14 +68,28 @@ typedef int         I4;
   typedef uint64_t  U8; // Itt működik a Microsoft-féle __int64
   
 #endif
-  
-typedef I8			LL;
-typedef U8			ULL;
+
+typedef I8	    LL;
+typedef U8	    ULL;
+typedef ssize_t nSZ;
+
+#define pTS  this
 
 #define pDEL( p ) if( p != NULL  ) { delete[] p; p = NULL; } 
 #define dN( p ) = ((p==NULL) ? 0 : sizeof(p)/sizeof(*p) )
 using namespace std;
 
+const char sASCII[] =
+    "................................"
+    " !\"#$%&'()*+,-./0123456789:;<=>?"
+    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+    "`abcdefghijklmnopqrstuvwxyz{|}~"
+    "..............................."
+    "..............................."
+    "..............................."
+    "...............................";
+I1 sDMP[0x100];
+  
 const I1*  asCHAR[] = {
                         cBLC,
                         cWHI,
@@ -85,7 +99,8 @@ const I1*  asCHAR[] = {
                         cBLU,
                         cMAG,
                         cCIA,
-                      }; 
+                      };
+ 
 const I1* sCLR( I4 c ) {
   if( c < 0 )
     c = -c;
@@ -96,123 +111,74 @@ size_t memcmp_i( const I1 *p_a, const I1 *p_b, size_t n ) {
   for( size_t i = 0; i < n; i++ )
     if( p_a[i] != p_b[i] )
       return i;
-  return 0;
+  return n;
 }
 
-class I4x4 {
+class DZR {
 public:
-  I4 x,y,z,w;
+  nSZ i, n;
 
-  /*I4x4( I4 _x, I4 _y, I4 _z, I4 _w ) { x = _x; y = _y; z = _z; w = _w; }*/
-  I4x4(I4 _x = 0, I4 _y = 0, I4 _z = 0, I4 _w = 0) : x(_x), y(_y), z(_z), w(_w) {}
-  bool operator != ( const I4x4 b ) const {
-    if( x != b.x )
-      return true;
-    if( y != b.y )
-      return true;
-    if( z != b.z )
-      return true;
-    
-    return w != b.w;
+  DZR( nSZ _i = 0, nSZ _n = 0 ) : i(_i), n(_n) {}
+  bool operator != ( const DZR b ) const {
+    if( i != b.i ) return true;
+    return n != b.n;
   }
-  bool operator == ( const I4x4 b ) const {
+  bool operator == ( const DZR b ) const {
     return !(*this!=b);
   }
-  I4& operator [] ( I4 i ) {
-    switch(i){
-      case 0: return x;
-      case 1: return y;
-      case 2: return z;
-      case 3: return w;
+    
+  I4 add( I1* pS, nSZ nA, DZR& W ) {
+    nSZ iC = &W-this, nC, nH = 0, code = -1;
+    I1 *pA, *pB = pS + W.i;
+    W.n = 0; 
+    while( iC > 0 ) {
+      iC--;
+      pA = pS+pTS[iC].i;
+      if( *pA != *pB )
+        continue;
+      
+      nC = nA-W.i;
+      if( nC > pTS[iC].n )
+        nC = pTS[iC].n;
+
+      nC = memcmp_i( pA, pB, nC );
+      if( nC < W.n )
+        continue;
+      code = iC;  
+      W.n = nC;
     }
-    throw std::out_of_range("I4x4 index out of bounds!");
+    W.n++;
+    return code;
   }
 
   
-  I4 nT_add( I1* pS, I4& iM, I4x4& T ) {
-    iM = 0;
-    I4	nT = &T-this;
-    size_t i, e;
-    
-    I1  *p_t = pS+T.x, *p_m; 
-    
-		I4x4* p_w = this;
-		while( iM < nT ) {
-			p_m = pS + p_w[iM].x;
-			e = (T.y > p_w[iM].y) ? p_w[iM].y : T.y; 
-			
-      i = memcmp_i( p_m, p_t, e);
-			if( e == i )
-      if( T.y == p_w[iM].y ) 
-        return nT; // Vége!
-      
-			if( i == p_w[iM].y ) {
-				// a T itt már hosszabb
-        if( !p_w[iM].z ) {
-          p_w[iM].z = nT;
-          
-          T.y = p_w[iM].y+1;
-          return nT+1; // bekebelezte 
-				}
-
-				iM = p_w[iM].z;
-				continue;
-			}
-			/*else if( i == T.y ) {
-				// feltolja ezt a szót mert T.n az elején van
-				T.z = iM;
-				
-				if( p_w[iM].z == id )
-					p_w[iM].z = nT;
-				else 
-					p_w[iM].w = nT;
+  std::ostream& co(std::ostream& os, DZR* pT, I1* pS, nSZ nA ) {
+    if( n > 1 ) {
+      os  << "\t0x" << uppercase << setw(2) << setfill('0')<< hex << i; 
+      os  << dec
+            << " "    << n; 
+      os.flush();
+        I4 iS = pT[i].i; 
+        for( I4 j = 0; j < n; j++ ) 
+          sDMP[j] = sASCII[pS[iS+j]];
         
-        return nT+1; // bekebelezte
-			}*/
+        sDMP[n] = 0;
+
+        os  << " \"" << sDMP << "\" '";
+        os.write( sASCII+(i&0xff), 1 );
+        os  << "'";
+      } else {
+        os  << " '";
+        os.write( sASCII+(i&0xff), 1 );
+        os  << "'";
+      }
       
-      // rövidebb az azonosság mint a iM
-			if( p_m[i] < p_t[i] ) {
-        if( !p_w[iM].w ) {
-          p_w[iM].w = nT;
-					
-          // bekebelezte
-          T.y = p_w[iM].y+1;
-          iM = -1-iM;
-          return nT+1; 
-				}
-
-				iM = p_w[iM].w;
-				continue;
-			} 
-
-      if( p_m[i] >= p_t[i] )
-			if( !p_w[iM].z ) {
-        p_w[iM].z = nT;
-				
-        // bekebelezte
-        T.y = p_w[iM].y+1;
-        iM = -1-iM;
-        return nT+1; 
-			}
-
-			iM = p_w[iM].z;
-		}
-
-		return nT;
-	}
-
-
-  
+      return os;
+  }
 };
-const char sDMP[] =
-    "................................"
-    " !\"#$%&'()*+,-./0123456789:;<=>?"
-    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
-    "`abcdefghijklmnopqrstuvwxyz{|}~"
-    "..............................."
-    "..............................."
-    "..............................."
-    "...............................";
+
+
+
 I4 main(I4 nAR, I1* asAR[]) {
 
   if (nAR < 3) {
@@ -275,24 +241,22 @@ I4 main(I4 nAR, I1* asAR[]) {
   // SZÜLŐ
   // =========================
   close(pipefd[1]);
-  I1 aDMP[0x100];
-  I4x4  aTR[0x100], // array tree
-        aCD[0x100], // array code
-        code;  
-  I4    aH[0x100],
-        nB = 0x1000, //c,
-        sS, 
-        lS = 0, nS = nB*2, 
-        iS = 0, lnM, 
-        nT=0, nTa,   
-        iT,     sAt = 0, 
-        iC = 0, iM = 0, nMX = 1;
-        
+  DZR aTR[0x100], // array tree
+      aCD[0x100], // array code
+      code;  
+  I4  aH[0x100];
+  nSZ nB = 0x1000, //c,
+      sS, 
+      lS = 0, nS = nB*2, 
+      iS = 0,  
+      nT=0, nTa,    
+      cd,     sAt = 0, 
+      pc = 0, iM = 0, nMX = 1,n;
+      
   I1    *pS = new I1[nS], *_pA;
   I1    *pB = new I1[nB];
   
-  ssize_t n;
-  aTR[0] = aCD[0] = I4x4();
+  aTR[0] = aCD[0] = DZR();
   while ((n = read(pipefd[0], pB, nB)) > 0) {
     
     if( (lS+n) < nS ) {
@@ -312,54 +276,39 @@ I4 main(I4 nAR, I1* asAR[]) {
   
 
     while( iS < lS ) {
-      if( iS < 1 || iC >= 0x100 ) {
+      if( iS < 1 || nT >= 0x100 ) {
         memset( aH, 0, 0x100*sizeof(*aH) );
         aH[0] = 1;
-        nT = iC = 0;
+        nT = pc = 0;
         
-        aTR[0] = I4x4(iS,1);
-                 //    char,  mom, i, n   
-        aCD[0] = I4x4( pS[iS], -1, 0, 0 );
-        nT=1; iC=1;
+        aTR[0] = DZR(iS, 1);
+        code = aCD[0] = DZR( pS[iS], -1 );
+        nT=1; pc=1;
         iS++;
-      }
-      aTR[nT] = I4x4(iS,lS-iS);
-      nTa = nT;
-      nT = aTR[0].nT_add( pS, iM, aTR[nT] );
-      aH[iM]++;
-      iS += aTR[iM].y;
-      code = aCD[iC] = I4x4(pS[iS], iM, aTR[iM].x, aTR[iM].y );
-      iS++;
 
-      // -------------------------
-      // Tree -> Konzolra
-      // -------------------------
-      cout  << "\r\n" << sCLR(code.y) << iC
-      << "\t0x" << uppercase << setw(2) << setfill('0')<< hex << code.x; 
-      cout  << dec
-            << " "    << code.y 
-            << " "    << code.z 
-            << " "    << code.w; 
-      cout.flush();
-      
-      
-      if( iM >= 0 ) {
-        for( I4 i = 0; i < code.w; i++ ) {
-          aDMP[i] = sDMP[pS[code.z+i]];
-        }
-        
-        cout  << " \"";
-        cout.write( aDMP, code.w );
-        cout << "\"";
-        cout.flush();
+        cout << "\r\n" << sCLR(code.n) << (U4)pc;
+        code.co( cout, aTR, pS, lS ).flush();
+      }
+
+      aTR[nT] = DZR(iS,0);
+      cd = aTR[0].add( pS, lS, aTR[nT] );
+      if( cd > -1 ) {
+        code = aCD[pc] = DZR( cd, aTR[cd].n );
+        aH[cd]++;
       } else {
-        cout  << " '";
-        cout.write( sDMP+(code.x&0xff), 1 );
-        cout  << "'";
-        cout.flush();
-      }
+        code = aCD[pc] = DZR( pS[iS], 1 );
+      }  
+      nT++;
+      aTR[nT] = DZR(iS,0);
+      cd = aTR[0].add( pS, lS, aTR[nT] );
+      
+      iS += code.n;
 
-      iC++;  
+      cout  << "\r\n" << sCLR(code.i) << pc;
+      code.co( cout, aTR, pS, lS ).flush();
+      
+      pc++;
+      nT++;  
     }
 
     // -------------------------

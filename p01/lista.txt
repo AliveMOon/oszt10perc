@@ -1,0 +1,18 @@
+[0;36mMewMerchant -	[0;33m"I went to market today: EUR cents
+[0;31mFoxTrader -	[0;35m"Here be a fine and sunny chick!
+		Come now, my dear, and buy one!"
+[0;36mMewMerchant -	[0;33m"And what be the price of this chick?"
+[0;31mFoxTrader -	[0;35m"You look a fine and serious tabby,
+		for you I'd let it go for 
+[0;36mMewMerchant -	[0;33m{ Let me think upon it... }? [0;36m[0;36mMewMerchant -	[0;33m"There now, here be  
+		— I'll lay it upon your table!"
+[0;31mFoxTrader -	[0;35m"Would you rob a poor honest merchant?
+		Look how fair I am! Give me
+[0;31mFoxTrader -	[0;35m"Come now, good sir! Do not jest with me!
+		Let us speak proper business, shall we? 
+[0;31mFoxTrader -	[0;35m"Now THAT be the spirit! Here is my hand — no pig's trotter!
+		And here be   chick!"
+[0;35m		"And see now, friend, for I know a gentleman when I meet one — 
+		I'll throw in, as a gift:"See you, and thank you for the chicks!
+		{ In the cage: 1, 2, 3... total:   chick!"
+[0;36mMewMerchant -	[0;33m  chick!"
