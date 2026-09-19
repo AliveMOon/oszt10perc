@@ -147,16 +147,14 @@ public:
       code = iC;  
       W.n = nC;
     }
-    W.n++;
     return code;
   }
 
   
   std::ostream& co(std::ostream& os, DZR* pT, I1* pS, nSZ nA ) {
     if( n > 1 ) {
-      os  << "\t0x" << uppercase << setw(2) << setfill('0')<< hex << i; 
-      os  << dec
-            << " "    << n; 
+      os  << " 0x" << uppercase << setw(2) << setfill('0')<< hex << i; 
+      os  << dec << " " << n; 
       os.flush();
         I4 iS = pT[i].i; 
         for( I4 j = 0; j < n; j++ ) 
@@ -164,9 +162,7 @@ public:
         
         sDMP[n] = 0;
 
-        os  << " \"" << sDMP << "\" '";
-        os.write( sASCII+(i&0xff), 1 );
-        os  << "'";
+        os  << " \"" << sDMP << "\"";
       } else {
         os  << " '";
         os.write( sASCII+(i&0xff), 1 );
@@ -248,7 +244,7 @@ I4 main(I4 nAR, I1* asAR[]) {
   nSZ nB = 0x1000, //c,
       sS, 
       lS = 0, nS = nB*2, 
-      iS = 0,  
+      iS = 0, oiS = 0,
       nT=0, nTa,    
       cd,     sAt = 0, 
       pc = 0, iM = 0, nMX = 1,n;
@@ -281,9 +277,10 @@ I4 main(I4 nAR, I1* asAR[]) {
         aH[0] = 1;
         nT = pc = 0;
         
+        oiS = iS;
         aTR[0] = DZR(iS, 1);
         code = aCD[0] = DZR( pS[iS], -1 );
-        nT=1; pc=1;
+        nT=1; pc=1; 
         iS++;
 
         cout << "\r\n" << sCLR(code.n) << (U4)pc;
@@ -293,17 +290,17 @@ I4 main(I4 nAR, I1* asAR[]) {
       aTR[nT] = DZR(iS,0);
       cd = aTR[0].add( pS, lS, aTR[nT] );
       if( cd > -1 ) {
-        code = aCD[pc] = DZR( cd, aTR[cd].n );
+        aCD[pc] = DZR( cd, aTR[cd].n );
         aH[cd]++;
       } else {
-        code = aCD[pc] = DZR( pS[iS], 1 );
-      }  
+        aCD[pc] = DZR( pS[iS], 1 );
+      }
       nT++;
-      aTR[nT] = DZR(iS,0);
-      cd = aTR[0].add( pS, lS, aTR[nT] );
-      
-      iS += code.n;
-
+      aTR[nT] = DZR( oiS, iS-oiS + aCD[pc].n );
+      oiS = iS;
+      iS += aCD[pc].n;
+            
+      code = aCD[pc]; 
       cout  << "\r\n" << sCLR(code.i) << pc;
       code.co( cout, aTR, pS, lS ).flush();
       
